@@ -41,15 +41,6 @@ const FLOW_URL = import.meta.env.VITE_FLOW_URL;
 const PREFILL_URL = import.meta.env.VITE_PREFILL_URL;
 const LIST_BY_SCHOOL_URL = import.meta.env.VITE_LIST_BY_SCHOOL_URL;
 
-// ===== Phase Transfer =====
-const PHASE_ORDER = [
-  "Reception",
-  "Junior",
-  "Secondary",
-  "Key Stage 5",
-  "Post-19",
-];
-
 // ===== Helpers =====
 const fileToBase64 = (file) =>
   new Promise((resolve, reject) => {
@@ -62,11 +53,6 @@ const fileToBase64 = (file) =>
 function asString(v) {
   if (v === null || v === undefined) return "";
   return typeof v === "string" ? v : String(v);
-}
-
-function isNonNullPhaseId(v) {
-  const s = asString(v).trim();
-  return s !== "" && s.toLowerCase() !== "null";
 }
 
 function startOfDay(d) {
@@ -127,25 +113,37 @@ async function postToFlow(payload) {
 async function fetchConsultationsForSchool(dfeValue, codeValue, location) {
   const qs = new URLSearchParams(location.search);
   const token = qs.get("token");
+  const idConsultParam =
+    qs.get("idConsult") ||
+    qs.get("consultId") ||
+    qs.get("ConsultID") ||
+    qs.get("idConsultation");
 
   // Mode 1: Token (prefill)
   if (token) {
     if (!PREFILL_URL) throw new Error("Missing VITE_PREFILL_URL");
-    const url = `${PREFILL_URL}${PREFILL_URL.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`;
+    let url = `${PREFILL_URL}${PREFILL_URL.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`;
+    if (idConsultParam) {
+      url += `&idConsult=${encodeURIComponent(idConsultParam)}`;
+    }
     const resp = await fetch(url);
     if (!resp.ok) throw new Error("Prefill API failed");
     const data = await resp.json();
 
-    return [
+        return [
       {
-        id: token,
-        impulseId: data.impulseId ?? "",
-        forename: data.forename ?? "",
-        surname: data.surname ?? "",
-        settingName: data.settingName ?? "",
-        idConsult: data.idConsult ?? data.idConsultation ?? "",
-        dueDate: data.dueDate ?? "",
-        phaseId: data.phaseId ?? "",
+        id: asString(
+          data.idConsult ?? data.idConsultation ?? idConsultParam ?? token,
+        ),
+        impulseId: asString(data.impulseId ?? ""),
+        forename: asString(data.forename ?? ""),
+        surname: asString(data.surname ?? ""),
+        settingName: asString(data.settingName ?? ""),
+        idConsult: asString(
+          data.idConsult ?? data.idConsultation ?? idConsultParam ?? "",
+        ),
+        phaseId: asString(data.phaseId ?? ""),
+        dueDate: asString(data.dueDate ?? ""),
       },
     ];
   }
@@ -167,15 +165,15 @@ async function fetchConsultationsForSchool(dfeValue, codeValue, location) {
       list?.error || list?.message || "Unexpected response from login API.";
     throw new Error(msg);
   }
-  return list.map((c, i) => ({
+    return list.map((c, i) => ({
     id: `c${i + 1}`,
-    impulseId: c.impulseId ?? "",
-    forename: c.forename ?? "",
-    surname: c.surname ?? "",
-    settingName: c.settingName ?? "",
-    idConsult: c.idConsult ?? c.idConsultation ?? "",
-    dueDate: c.dueDate ?? "",
-    phaseId: c.phaseId ?? "",
+    impulseId: asString(c.impulseId ?? ""),
+    forename: asString(c.forename ?? ""),
+    surname: asString(c.surname ?? ""),
+    settingName: asString(c.settingName ?? ""),
+    idConsult: asString(c.idConsult ?? c.idConsultation ?? ""),
+    phaseId: asString(c.phaseId ?? ""),
+    dueDate: asString(c.dueDate ?? ""),
   }));
 }
 
@@ -195,7 +193,7 @@ function NavButton({ icon: Icon, active, children, onClick }) {
       <Icon className="h-4 w-4 opacity-90" />
       <span className="font-medium capitalize">{children}</span>
     </button>
-  );
+  )
 }
 
 function AppSidebar({
@@ -226,53 +224,53 @@ function AppSidebar({
     },
   ].filter((x) => x.show);
 
-  return (
-    <div className="flex h-full flex-col text-white">
-      <div className="px-5 pt-6 pb-4">
-        <img
-          src={bccLogo}
-          alt="Birmingham City Council"
-          className="w-full h-[180px] object-contain"
-        />
-        <div className="mt-3 text-center text-2xl font-semibold tracking-wide text-white/95">
-          SENAR Portal
-        </div>
-      </div>
+return (
+  <div className="flex h-full flex-col text-white">
+<div className="px-5 pt-6 pb-4">
+  <img
+    src={bccLogo}
+    alt="Birmingham City Council"
+    className="w-full h-[180px] object-contain"
+  />
+  <div className="mt-3 text-center text-2xl font-semibold tracking-wide text-white/95">
+    SENAR Portal
+  </div>
+</div>
 
       <div className="mt-5 px-3">
         <div className="mb-2 px-2 text-xs font-medium text-white/70">
           Portal Menu
         </div>
         <div className="space-y-2">
-          {items.map((it) => (
-            <NavButton
-              key={it.key}
-              icon={it.icon}
-              active={currentView === it.key}
-              onClick={() => {
-                setCurrentView(it.key);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            >
-              {it.label}
-            </NavButton>
-          ))}
-        </div>
+            {items.filter((it) => it.show).map((it) => (
+                <NavButton
+                key={it.key}
+                icon={it.icon}
+                active={currentView === it.key}
+                onClick={() => {
+                    setCurrentView(it.key)
+                    window.scrollTo({ top: 0, behavior: "smooth" })
+                }}
+                >
+                {it.label}
+                </NavButton>
+            ))}
+            </div>
       </div>
 
       <div className="mt-auto p-4">
         {canSeePortalViews && (
-          <button
+                    <button
             type="button"
             onClick={onLogout}
             className={cn(
-              "glass-btn w-full flex items-center justify-center gap-2 px-3 py-2.5",
-              "text-white/95 hover:text-white",
+                "glass-btn w-full flex items-center justify-center gap-2 px-3 py-2.5",
+                "text-white/95 hover:text-white",
             )}
-          >
+            >
             <LogOut className="h-4 w-4 opacity-90" />
             <span className="font-medium">Log out</span>
-          </button>
+            </button>
         )}
 
         <div className="mt-3 text-center text-[11px] text-white/60">
@@ -286,8 +284,18 @@ function AppSidebar({
 // ===== Main Dashboard =====
 export default function Dashboard() {
   const location = useLocation();
+  const qs = new URLSearchParams(location.search);
+  const token = qs.get("token");
+  const tokenMode = Boolean(token);
+  const requestedIdConsult =
+    qs.get("idConsult") ||
+    qs.get("consultId") ||
+    qs.get("ConsultID") ||
+    qs.get("idConsultation");
 
-  const [currentView, setCurrentView] = React.useState("home");
+  const [currentView, setCurrentView] = React.useState(
+    tokenMode ? "consultations" : "home",
+  );
   const [consultations, setConsultations] = React.useState([]);
   const [selectedConsultationId, setSelectedConsultationId] =
     React.useState(null);
@@ -301,7 +309,7 @@ export default function Dashboard() {
   const [logonRequested, setLogonRequested] = React.useState(false);
   const [loggingIn, setLoggingIn] = React.useState(false);
   const canAttemptLogin =
-    dfe.trim().length > 0 && schoolCode.trim().length > 0 && !loggingIn;
+  dfe.trim().length > 0 && schoolCode.trim().length > 0 && !loggingIn;
   const [portalSettingName, setPortalSettingName] = React.useState("");
 
   // Consultation form
@@ -344,13 +352,14 @@ export default function Dashboard() {
     attachments: [],
   });
   const annualReviewVisibleValid =
-    arData.impulseId.trim().length > 0 &&
-    arData.dob.trim().length > 0 &&
-    arData.reviewDate.trim().length > 0 &&
-    arData.recommendation.trim().length > 0 &&
-    (arData.attachments?.length ?? 0) > 0;
+  arData.impulseId.trim().length > 0 &&
+  arData.dob.trim().length > 0 &&
+  arData.reviewDate.trim().length > 0 &&
+  arData.recommendation.trim().length > 0 &&
+  (arData.attachments?.length ?? 0) > 0;
 
-  const hasToken = new URLSearchParams(location.search).has("token");
+
+  const hasToken = tokenMode;
   const canSeePortalViews = isLoggedIn || hasToken;
 
   // Persistence
@@ -377,17 +386,24 @@ export default function Dashboard() {
 
   React.useEffect(() => {
     async function load() {
-      const hasTokenLocal = new URLSearchParams(location.search).has("token");
+      const hasTokenLocal = tokenMode;
 
       // Token mode: allow
       if (hasTokenLocal) {
         setLoading(true);
         try {
           const data = await fetchConsultationsForSchool("", "", location);
-          setConsultations(data);
-          setPortalSettingName(data?.[0]?.settingName ?? "");
+          const req = asString(requestedIdConsult).trim();
+          const chosen = req
+            ? data.find((c) => asString(c.idConsult).trim() === req)
+            : data[0];
+          const single = chosen ? [chosen] : data;
+          setConsultations(single);
+          setPortalSettingName(single?.[0]?.settingName ?? "");
           setIsLoggedIn(true);
           setPortalError("");
+          setCurrentView("consultations");
+          setSelectedConsultationId(single?.[0]?.id ?? null);
         } catch (e) {
           setPortalError(e.message);
           setIsLoggedIn(false);
@@ -496,32 +512,47 @@ export default function Dashboard() {
     try {
       const payload = {
         type: "CONSULTATION_RESPONSE",
-        suitableSetting: asString(suitableSetting),
-        suitableReasoning: asString(
-          suitableSetting === "No" ? suitableReasoning : "",
-        ),
-        attendanceIncompatible: asString(attendanceIncompatible),
-        attendanceReasoning: asString(
-          attendanceIncompatible === "Yes" ? attendanceReasoning : "",
-        ),
-        proposedStartDate: asString(
+
+        suitableSetting: asString(suitableSetting) || null,
+        suitableReasoning:
+          suitableSetting === "No" ? (asString(suitableReasoning) || null) : null,
+
+        attendanceIncompatible: asString(attendanceIncompatible) || null,
+        attendanceReasoning:
+          attendanceIncompatible === "Yes"
+            ? (asString(attendanceReasoning) || null)
+            : null,
+
+        proposedStartDate:
           suitableSetting === "Yes" && attendanceIncompatible === "No"
-            ? proposedStartDate
-            : "",
-        ),
-        bandingOrFunding: asString(
+            ? (asString(proposedStartDate) || null)
+            : null,
+
+        bandingOrFunding:
           suitableSetting === "Yes" && attendanceIncompatible === "No"
-            ? bandingOrFunding
-            : "",
-        ),
-        additionalInfo: asString(
+            ? (asString(bandingOrFunding) || null)
+            : null,
+
+        additionalInfo:
           suitableSetting === "Yes" && attendanceIncompatible === "No"
-            ? additionalInfo
-            : "",
-        ),
-        responderName: asString(responderName),
-        responderRole: asString(responderRole),
-        consultation: selectedConsultation,
+            ? (asString(additionalInfo) || null)
+            : null,
+
+        responderName: asString(responderName) || null,
+        responderRole: asString(responderRole) || null,
+
+        consultation: selectedConsultation
+          ? {
+              id: asString(selectedConsultation.id) || null,
+              impulseId: asString(selectedConsultation.impulseId) || null,
+              forename: asString(selectedConsultation.forename) || null,
+              surname: asString(selectedConsultation.surname) || null,
+              settingName: asString(selectedConsultation.settingName) || null,
+              idConsult: asString(selectedConsultation.idConsult) || null,
+              phaseId: asString(selectedConsultation.phaseId) || null,
+              dueDate: asString(selectedConsultation.dueDate) || null,
+            }
+          : null,
       };
 
       await postToFlow(payload);
@@ -597,121 +628,78 @@ export default function Dashboard() {
     day: "2-digit",
   });
 
-  const consultationsOnly = React.useMemo(
-    () => consultations.filter((c) => !isNonNullPhaseId(c?.phaseId)),
-    [consultations],
-  );
+  const total = consultations.length;
+  const overdue = consultations.filter((c) => {
+    const due = startOfDay(c.dueDate);
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return due && due < t;
+  }).length;
 
-  const phaseTransferOnly = React.useMemo(
-    () => consultations.filter((c) => isNonNullPhaseId(c?.phaseId)),
-    [consultations],
-  );
-
-  const computeStats = React.useCallback((items) => {
+  const dueSoon = (() => {
     const t = new Date();
     t.setHours(0, 0, 0, 0);
     const next7 = new Date(+t + 7 * 24 * 60 * 60 * 1000);
-
-    let overdue = 0;
-    let dueSoon = 0;
-    for (const c of items) {
+    return consultations.filter((c) => {
       const due = startOfDay(c.dueDate);
-      if (!due) continue;
-      if (due < t) overdue += 1;
-      else if (due <= next7) dueSoon += 1;
-    }
-
-    return { total: items.length, overdue, dueSoon };
-  }, []);
-
-  const allStats = React.useMemo(
-    () => computeStats(consultations),
-    [consultations, computeStats],
-  );
-  const consultStats = React.useMemo(
-    () => computeStats(consultationsOnly),
-    [consultationsOnly, computeStats],
-  );
-  const phaseStats = React.useMemo(
-    () => computeStats(phaseTransferOnly),
-    [phaseTransferOnly, computeStats],
-  );
-
-  const { total, overdue, dueSoon } = allStats;
-  const {
-    total: consultTotal,
-    overdue: consultOverdue,
-    dueSoon: consultDueSoon,
-  } = consultStats;
-  const {
-    total: phaseTotal,
-    overdue: phaseOverdue,
-    dueSoon: phaseDueSoon,
-  } = phaseStats;
-
-  const phaseTransferBuckets = React.useMemo(() => {
-    const buckets = Object.fromEntries(PHASE_ORDER.map((p) => [p, []]));
-    for (const c of phaseTransferOnly) {
-      const p = asString(c.phaseId).trim();
-      if (buckets[p]) buckets[p].push(c);
-    }
-    return buckets;
-  }, [phaseTransferOnly]);
-
-  const phaseTransferSections = React.useMemo(
-    () => PHASE_ORDER.filter((p) => (phaseTransferBuckets[p]?.length ?? 0) > 0),
-    [phaseTransferBuckets],
-  );
+      return due && due >= t && due <= next7;
+    }).length;
+  })();
 
   return (
     <div className="min-h-svh bg-linear-to-b from-background to-muted/30">
       <Toaster richColors />
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-[320px] lg:flex-col lg:py-6 lg:pl-6">
-        <div className="h-full w-full overflow-hidden rounded-[28px] bg-[#8B419E] shadow-2x1 ring-1 ring-white/10">
-          <AppSidebar
-            currentView={currentView}
-            setCurrentView={(v) => {
-              setCurrentView(v);
-              setSelectedConsultationId(null);
-              setSubmitMessage("");
-            }}
-            canSeePortalViews={canSeePortalViews}
-            onLogout={handleLogout}
-          />
-        </div>
-      </aside>
+      {!tokenMode && (
+              <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-[320px] lg:flex-col lg:py-6 lg:pl-6">
+          <div className="h-full w-full overflow-hidden rounded-[28px] bg-[#8B419E] shadow-2x1 ring-1 ring-white/10">
+            <AppSidebar
+              currentView={currentView}
+              setCurrentView={(v) => {
+                setCurrentView(v)
+                setSelectedConsultationId(null)
+                setSubmitMessage("")
+              }}
+              canSeePortalViews={canSeePortalViews}
+              onLogout={handleLogout}
+            />
+          </div>
+        </aside>
+      )}
 
       {/* Main */}
-      <div className="lg:pl-[344px]">
+      <div className={cn("lg:pl-[344px]", tokenMode && "lg:pl-0")}>
         {/* Top bar */}
         <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
           <div className="mx-auto relative flex max-w-6xl items-center gap-3 px-4 py-3">
             {/* Mobile nav */}
-            <div className="lg:hidden">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Open menu">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="p-0 w-80 bg-transparent">
-                  <div className="h-full w-full overflow-hidden rounded-[28px] bg-[#8B419E] shadow-xl ring-1 ring-black/10">
-                    <AppSidebar
-                      currentView={currentView}
-                      setCurrentView={(v) => {
-                        setCurrentView(v);
-                        setSelectedConsultationId(null);
-                        setSubmitMessage("");
-                      }}
-                      canSeePortalViews={canSeePortalViews}
-                      onLogout={handleLogout}
-                    />
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
+            {!tokenMode && (
+                          <div className="lg:hidden">
+                            <Sheet>
+                              <SheetTrigger asChild>
+                                <Button variant="ghost" size="icon" aria-label="Open menu">
+                                  <Menu className="h-5 w-5" />
+                                </Button>
+                              </SheetTrigger>
+                              <SheetContent side="left" className="p-0 w-80 bg-transparent">
+                              <div className="h-full w-full overflow-hidden rounded-[28px] bg-[#8B419E] shadow-xl ring-1 ring-black/10">
+                                <AppSidebar
+                                  currentView={currentView}
+                                  setCurrentView={(v) => {
+                                    setCurrentView(v);
+                                    setSelectedConsultationId(null);
+                                    setSubmitMessage("");
+                                  }}
+                                  canSeePortalViews={canSeePortalViews}
+                                  onLogout={handleLogout}
+                                />
+                                </div>
+                              </SheetContent>
+                            </Sheet>
+                          </div>
+            )}
+
 
             <div className="flex-1">
               <div className="text-sm text-muted-foreground">Today</div>
@@ -724,7 +712,7 @@ export default function Dashboard() {
                 {portalSettingName}
               </div>
             )}
-            {canSeePortalViews && (
+            {canSeePortalViews && !tokenMode && (
               <div className="hidden sm:flex items-center gap-2">
                 <Badge variant="secondary" className="gap-1">
                   <Calendar className="h-3.5 w-3.5" />
@@ -817,91 +805,46 @@ export default function Dashboard() {
                     <CardHeader>
                       <CardTitle>Welcome to the SENAR Portal</CardTitle>
                       <CardDescription>
-                        Review outstanding consultations for your school and
-                        submit annual review documentation to SENAR.
+                        Review outstanding consultations for your school and submit annual review documentation to SENAR. 
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {consultTotal === 0 && phaseTotal === 0 ? (
+                        <div className="mb-3 text-sm font-semibold text-muted-foreground">Consultations</div>
+                      {total === 0 ? (
                         <div className="text-muted-foreground">
                           There are currently no outstanding consultations for
                           your school.
                         </div>
                       ) : (
-                        <div className="space-y-6">
-                          <div className="space-y-3">
-                            <div className="text-lg font-semibold">
-                              Consultations
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-3">
-                              <Card className="shadow-none">
-                                <CardHeader className="pb-2">
-                                  <CardDescription>Total</CardDescription>
-                                  <CardTitle className="text-2xl">
-                                    {consultTotal}
-                                  </CardTitle>
-                                </CardHeader>
-                              </Card>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <Card className="shadow-none">
+                            <CardHeader className="pb-2">
+                              <CardDescription>Total</CardDescription>
+                              <CardTitle className="text-2xl">
+                                {total}
+                              </CardTitle>
+                            </CardHeader>
+                          </Card>
 
-                              <Card className="shadow-none">
-                                <CardHeader className="pb-2">
-                                  <CardDescription>
-                                    Due in next 7 days
-                                  </CardDescription>
-                                  <CardTitle className="text-2xl">
-                                    {consultDueSoon}
-                                  </CardTitle>
-                                </CardHeader>
-                              </Card>
+                          <Card className="shadow-none">
+                            <CardHeader className="pb-2">
+                              <CardDescription>
+                                Due in next 7 days
+                              </CardDescription>
+                              <CardTitle className="text-2xl">
+                                {dueSoon}
+                              </CardTitle>
+                            </CardHeader>
+                          </Card>
 
-                              <Card className="shadow-none">
-                                <CardHeader className="pb-2">
-                                  <CardDescription>Overdue</CardDescription>
-                                  <CardTitle className="text-2xl">
-                                    {consultOverdue}
-                                  </CardTitle>
-                                </CardHeader>
-                              </Card>
-                            </div>
-                          </div>
-
-                          <Separator />
-
-                          <div className="space-y-3">
-                            <div className="text-lg font-semibold">
-                              Phase Transfer Consultations
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-3">
-                              <Card className="shadow-none">
-                                <CardHeader className="pb-2">
-                                  <CardDescription>Total</CardDescription>
-                                  <CardTitle className="text-2xl">
-                                    {phaseTotal}
-                                  </CardTitle>
-                                </CardHeader>
-                              </Card>
-
-                              <Card className="shadow-none">
-                                <CardHeader className="pb-2">
-                                  <CardDescription>
-                                    Due in next 7 days
-                                  </CardDescription>
-                                  <CardTitle className="text-2xl">
-                                    {phaseDueSoon}
-                                  </CardTitle>
-                                </CardHeader>
-                              </Card>
-
-                              <Card className="shadow-none">
-                                <CardHeader className="pb-2">
-                                  <CardDescription>Overdue</CardDescription>
-                                  <CardTitle className="text-2xl">
-                                    {phaseOverdue}
-                                  </CardTitle>
-                                </CardHeader>
-                              </Card>
-                            </div>
-                          </div>
+                          <Card className="shadow-none">
+                            <CardHeader className="pb-2">
+                              <CardDescription>Overdue</CardDescription>
+                              <CardTitle className="text-2xl">
+                                {overdue}
+                              </CardTitle>
+                            </CardHeader>
+                          </Card>
                         </div>
                       )}
                     </CardContent>
@@ -921,13 +864,13 @@ export default function Dashboard() {
                   </CardHeader>
 
                   <CardContent>
-                    {consultationsOnly.length === 0 ? (
+                    {consultations.length === 0 ? (
                       <div className="text-muted-foreground">
                         No outstanding consultations found.
                       </div>
                     ) : (
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {consultationsOnly.map((c) => {
+                        {consultations.map((c) => {
                           const badge = dueBadge(c.dueDate);
                           return (
                             <button
@@ -979,210 +922,214 @@ export default function Dashboard() {
               )}
 
               {/* CONSULTATION FORM */}
-              {(currentView === "consultations" ||
-                currentView === "phase-transfer") &&
-                selectedConsultationId && (
-                  <Card>
-                    <CardHeader>
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <CardTitle>
-                            Responding for {selectedConsultation?.forename}{" "}
-                            {selectedConsultation?.surname}
-                          </CardTitle>
-                          <CardDescription>
-                            Impulse ID: {selectedConsultation?.impulseId}
-                          </CardDescription>
-                        </div>
-
-                        <Button
-                          variant="secondary"
-                          onClick={() => {
-                            setSelectedConsultationId(null);
-                            setSubmitMessage("");
-                          }}
-                        >
-                          ← Back to list
-                        </Button>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent>
-                      <form
-                        onSubmit={handleConsultationSubmit}
-                        className="space-y-7 max-w-3xl"
-                      >
-                        {/* Q1 */}
-                        <section className="space-y-3">
-                          <div className="font-semibold">
-                            Is your setting suitable for the child/young person?
-                          </div>
-                          <RadioGroup
-                            value={suitableSetting}
-                            onValueChange={setSuitableSetting}
-                            className="flex gap-6"
-                          >
-                            <label className="flex items-center gap-2">
-                              <RadioGroupItem value="Yes" />
-                              Yes
-                            </label>
-                            <label className="flex items-center gap-2">
-                              <RadioGroupItem value="No" />
-                              No
-                            </label>
-                          </RadioGroup>
-
-                          {suitableSetting === "No" && (
-                            <div className="space-y-2">
-                              <Label>Reasoning (required)</Label>
-                              <Textarea
-                                rows={4}
-                                value={suitableReasoning}
-                                onChange={(e) =>
-                                  setSuitableReasoning(e.target.value)
-                                }
-                                required
-                              />
-                            </div>
-                          )}
-                        </section>
-
-                        <Separator />
-
-                        {/* Q2 */}
-                        <section className="space-y-3">
-                          <div className="font-semibold">
-                            Would attendance be incompatible with efficient
-                            education of others?
-                          </div>
-                          <RadioGroup
-                            value={attendanceIncompatible}
-                            onValueChange={setAttendanceIncompatible}
-                            className="flex gap-6"
-                          >
-                            <label className="flex items-center gap-2">
-                              <RadioGroupItem value="Yes" />
-                              Yes
-                            </label>
-                            <label className="flex items-center gap-2">
-                              <RadioGroupItem value="No" />
-                              No
-                            </label>
-                          </RadioGroup>
-
-                          {attendanceIncompatible === "Yes" && (
-                            <div className="space-y-2">
-                              <Label>Reasoning (required)</Label>
-                              <Textarea
-                                rows={4}
-                                value={attendanceReasoning}
-                                onChange={(e) =>
-                                  setAttendanceReasoning(e.target.value)
-                                }
-                                required
-                              />
-                            </div>
-                          )}
-                        </section>
-
-                        {/* Conditional placement */}
-                        {suitableSetting === "Yes" &&
-                          attendanceIncompatible === "No" && (
+              {currentView === "consultations" && selectedConsultationId && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <CardTitle>
+                          Responding for {selectedConsultation?.forename}{" "}
+                          {selectedConsultation?.surname}
+                        </CardTitle>
+                        <CardDescription>
+                          Impulse ID: {selectedConsultation?.impulseId}
+                          {selectedConsultation?.idConsult ? (
                             <>
-                              <Separator />
-                              <section className="grid gap-5 sm:grid-cols-2">
-                                <div className="space-y-2">
-                                  <Label>Proposed Start Date</Label>
-                                  <Input
-                                    type="date"
-                                    value={proposedStartDate}
-                                    onChange={(e) =>
-                                      setProposedStartDate(e.target.value)
-                                    }
-                                    required
-                                  />
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label>Banding / Funding Requested</Label>
-                                  <Input
-                                    value={bandingOrFunding}
-                                    onChange={(e) =>
-                                      setBandingOrFunding(e.target.value)
-                                    }
-                                    required
-                                  />
-                                </div>
-
-                                <div className="space-y-2 sm:col-span-2">
-                                  <Label>Additional Info</Label>
-                                  <Input
-                                    value={additionalInfo}
-                                    onChange={(e) =>
-                                      setAdditionalInfo(e.target.value)
-                                    }
-                                    placeholder="e.g. Course title, length"
-                                    required
-                                  />
-                                </div>
-                              </section>
+                              {" • "}Consultation ID: {selectedConsultation.idConsult}
                             </>
-                          )}
+                          ) : null}
+                        </CardDescription>
+                      </div>
+                      {!tokenMode && (
+                                              <Button
+                                                variant="secondary"
+                                                onClick={() => {
+                                                  setSelectedConsultationId(null);
+                                                  setSubmitMessage("");
+                                                }}
+                                              >
+                                                ← Back to list
+                                              </Button>
+                      )}
+                    </div>
+                  </CardHeader>
 
-                        <Separator />
+                  <CardContent>
+                    <form
+                      onSubmit={handleConsultationSubmit}
+                      className="space-y-7 max-w-3xl"
+                    >
+                      {/* Q1 */}
+                      <section className="space-y-3">
+                        <div className="font-semibold">
+                          Is your setting suitable for the child/young person?
+                        </div>
+                        <RadioGroup
+                          value={suitableSetting}
+                          onValueChange={setSuitableSetting}
+                          className="flex gap-6"
+                        >
+                          <label className="flex items-center gap-2">
+                            <RadioGroupItem value="Yes" />
+                            Yes
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <RadioGroupItem value="No" />
+                            No
+                          </label>
+                        </RadioGroup>
 
-                        {/* Responder */}
-                        <section className="grid gap-5 sm:grid-cols-2">
+                        {suitableSetting === "No" && (
                           <div className="space-y-2">
-                            <Label>Your Name</Label>
-                            <Input
-                              value={responderName}
-                              onChange={(e) => setResponderName(e.target.value)}
+                            <Label>Reasoning (required)</Label>
+                            <Textarea
+                              rows={4}
+                              value={suitableReasoning}
+                              onChange={(e) =>
+                                setSuitableReasoning(e.target.value)
+                              }
                               required
                             />
                           </div>
+                        )}
+                      </section>
 
+                      <Separator />
+
+                      {/* Q2 */}
+                      <section className="space-y-3">
+                        <div className="font-semibold">
+                          Would attendance be incompatible with efficient
+                          education of others?
+                        </div>
+                        <RadioGroup
+                          value={attendanceIncompatible}
+                          onValueChange={setAttendanceIncompatible}
+                          className="flex gap-6"
+                        >
+                          <label className="flex items-center gap-2">
+                            <RadioGroupItem value="Yes" />
+                            Yes
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <RadioGroupItem value="No" />
+                            No
+                          </label>
+                        </RadioGroup>
+
+                        {attendanceIncompatible === "Yes" && (
                           <div className="space-y-2">
-                            <Label>Your Role</Label>
-                            <Input
-                              value={responderRole}
-                              onChange={(e) => setResponderRole(e.target.value)}
+                            <Label>Reasoning (required)</Label>
+                            <Textarea
+                              rows={4}
+                              value={attendanceReasoning}
+                              onChange={(e) =>
+                                setAttendanceReasoning(e.target.value)
+                              }
                               required
                             />
                           </div>
-                        </section>
+                        )}
+                      </section>
 
-                        {submitMessage && (
-                          <Alert variant="destructive">
-                            <AlertTitle className="flex items-center gap-2">
-                              <AlertTriangle className="h-4 w-4" />
-                              Submission error
-                            </AlertTitle>
-                            <AlertDescription>{submitMessage}</AlertDescription>
-                          </Alert>
+                      {/* Conditional placement */}
+                      {suitableSetting === "Yes" &&
+                        attendanceIncompatible === "No" && (
+                          <>
+                            <Separator />
+                            <section className="grid gap-5 sm:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label>Proposed Start Date</Label>
+                                <Input
+                                  type="date"
+                                  value={proposedStartDate}
+                                  onChange={(e) =>
+                                    setProposedStartDate(e.target.value)
+                                  }
+                                  required
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label>Banding / Funding Requested</Label>
+                                <Input
+                                  value={bandingOrFunding}
+                                  onChange={(e) =>
+                                    setBandingOrFunding(e.target.value)
+                                  }
+                                  required
+                                />
+                              </div>
+
+                              <div className="space-y-2 sm:col-span-2">
+                                <Label>Additional Info</Label>
+                                <Input
+                                  value={additionalInfo}
+                                  onChange={(e) =>
+                                    setAdditionalInfo(e.target.value)
+                                  }
+                                  placeholder="e.g. Course title, length"
+                                  required
+                                />
+                              </div>
+                            </section>
+                          </>
                         )}
 
-                        <div className="flex gap-3">
-                          <Button
-                            type="submit"
-                            disabled={submitting || !consultationVisibleValid}
-                            className="min-w-44"
-                          >
-                            {submitting ? "Submitting…" : "Submit Response"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => resetConsultationForm()}
-                            disabled={submitting}
-                          >
-                            Clear form
-                          </Button>
+                      <Separator />
+
+                      {/* Responder */}
+                      <section className="grid gap-5 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Your Name</Label>
+                          <Input
+                            value={responderName}
+                            onChange={(e) => setResponderName(e.target.value)}
+                            required
+                          />
                         </div>
-                      </form>
-                    </CardContent>
-                  </Card>
-                )}
+
+                        <div className="space-y-2">
+                          <Label>Your Role</Label>
+                          <Input
+                            value={responderRole}
+                            onChange={(e) => setResponderRole(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </section>
+
+                      {submitMessage && (
+                        <Alert variant="destructive">
+                          <AlertTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            Submission error
+                          </AlertTitle>
+                          <AlertDescription>{submitMessage}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      <div className="flex gap-3">
+                        <Button
+                          type="submit"
+                          disabled={submitting || !consultationVisibleValid}
+                          className="min-w-44"
+                        >
+                          {submitting ? "Submitting…" : "Submit Response"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => resetConsultationForm()}
+                          disabled={submitting}
+                        >
+                          Clear form
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* ANNUAL REVIEWS */}
               {currentView === "annual-reviews" && (
@@ -1293,90 +1240,18 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               )}
-              {/* PHASE TRANSFER */}
-              {currentView === "phase-transfer" && !selectedConsultationId && (
+
+              {/* PHASE TRANSFER (placeholder) */}
+              {currentView === "phase-transfer" && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Phase Transfer Consultations</CardTitle>
+                    <CardTitle>Phase Transfer</CardTitle>
                     <CardDescription>
-                      Select a consultation to respond. Consultations are
-                      grouped by phase.
+                      This section is being prepared.
                     </CardDescription>
                   </CardHeader>
-
-                  <CardContent className="space-y-8">
-                    {phaseTransferSections.length === 0 ? (
-                      <div className="text-muted-foreground">
-                        No outstanding phase transfer consultations found.
-                      </div>
-                    ) : (
-                      phaseTransferSections.map((phase, idx) => (
-                        <div key={phase} className="space-y-4">
-                          <div className="flex flex-wrap items-end justify-between gap-2">
-                            <div className="text-lg font-semibold">{phase}</div>
-                            <Badge variant="secondary">
-                              {phaseTransferBuckets[phase].length} to respond
-                            </Badge>
-                          </div>
-
-                          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {phaseTransferBuckets[phase].map((c) => {
-                              const badge = dueBadge(c.dueDate);
-                              return (
-                                <button
-                                  key={c.id}
-                                  className={cn(
-                                    "text-left rounded-xl border bg-card p-4 transition",
-                                    "hover:shadow-sm hover:border-ring focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/30",
-                                  )}
-                                  onClick={() =>
-                                    setSelectedConsultationId(c.id)
-                                  }
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                      <div className="font-semibold">
-                                        {c.impulseId}
-                                      </div>
-                                      <div className="text-sm text-muted-foreground">
-                                        {c.forename} {c.surname}
-                                      </div>
-                                    </div>
-                                    <span
-                                      className={cn(
-                                        "rounded-md px-2 py-1 text-xs font-medium",
-                                        badge.className,
-                                      )}
-                                    >
-                                      {badge.label}
-                                    </span>
-                                  </div>
-
-                                  <Separator className="my-3" />
-
-                                  <div className="text-sm">
-                                    <div className="text-muted-foreground">
-                                      Due date
-                                    </div>
-                                    <div className="font-medium">
-                                      {c.dueDate
-                                        ? new Date(
-                                            c.dueDate,
-                                          ).toLocaleDateString()
-                                        : "—"}
-                                    </div>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-
-                          {idx < phaseTransferSections.length - 1 && (
-                            <Separator />
-                          )}
-                        </div>
-                      ))
-                    )}
+                  <CardContent className="text-muted-foreground">
+                    Coming soon.
                   </CardContent>
                 </Card>
               )}
